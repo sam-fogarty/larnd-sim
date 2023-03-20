@@ -8,6 +8,8 @@
 
 This software aims to simulate the light readout and the pixelated charge readout of a Liquid Argon Time Projection Chamber. It consists of a set of highly-parallelized algorithms implemented on the [CUDA architecture](https://developer.nvidia.com/cuda-toolkit) using [Numba](https://numba.pydata.org).
 
+*This is a forked version of larnd-sim that allows for using the LAr NEST model*
+
 Software documentation is available [here](https://dune.github.io/larnd-sim/index.html).
 
 ## Overview
