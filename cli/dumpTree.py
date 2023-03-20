@@ -15,7 +15,7 @@ from ROOT import TG4Event, TFile
 # Output array datatypes
 segments_dtype = np.dtype([("eventID", "u4"), ("segment_id", "u4"), ("z_end", "f4"),
                            ("trackID", "u4"), ("tran_diff", "f4"),
-                           ("z_start", "f4"), ("x_end", "f4"),
+                           ("z_start", "f4"), ("x_end", "f4"),("E_start", "f4"),
                            ("y_end", "f4"), ("n_electrons", "u4"),
                            ("pdgId", "i4"), ("x_start", "f4"),
                            ("y_start", "f4"), ("t_start", "f4"),
@@ -274,6 +274,9 @@ def dump(input_file, output_file):
                 segment[iHit]["tran_diff"] = 0
                 segment[iHit]["pixel_plane"] = 0
                 segment[iHit]["n_photons"] = 0
+                p_start = np.sqrt(np.sum(trajectories[hitSegment.Contrib[0]]["pxyz_start"]**2))
+                E_start = np.sqrt(0.510999**2 + p_start**2) - 0.510999
+                segment[iHit]["E_start"] = E_start
 
             segments_list.append(segment)
 
