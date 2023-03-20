@@ -18,7 +18,7 @@ E_FIELD = 0.50 # kV/cm
 #: Drift velocity in :math:`cm/\mu s`
 V_DRIFT = 0.1648 # cm / us,
 #: Electron lifetime in :math:`\mu s`
-ELECTRON_LIFETIME = 2.2e3 # us,
+ELECTRON_LIFETIME = 2.6e3 # us,
 #: Time sampling in :math:`\mu s`
 TIME_SAMPLING = 0.1 # us
 #: Drift time window in :math:`\mu s`
