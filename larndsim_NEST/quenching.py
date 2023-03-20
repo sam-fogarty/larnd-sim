@@ -9,7 +9,7 @@ from numba import cuda
 from .consts import detector, physics, light
 
 @cuda.jit
-def quench(tracks, mode):
+def quench(tracks, mode, recombination):
     """
     This CUDA kernel takes as input an array of track segments and calculates
     the number of electrons and photons that reach the anode plane after recombination.
@@ -34,8 +34,11 @@ def quench(tracks, mode):
         elif mode == physics.BIRKS:
             # Amoruso, et al NIM A 523 (2004) 275
             recomb = physics.BIRKS_Ab / (1 + physics.BIRKS_kb * dEdx / (detector.E_FIELD * detector.LAR_DENSITY))
+        elif mode == physics.NEST:
+            # https://github.com/NESTCollaboration/nestpy/
+            recomb = recombination[itrk]
         else:
-            raise ValueError("Invalid recombination mode: must be 'physics.BOX' or 'physics.BIRKS'")
+            raise ValueError("Invalid recombination mode: must be 'physics.BOX', 'physics.BIRKS', 'physics.NEST'")
 
         if isnan(recomb):
             raise RuntimeError("Invalid recombination value")
