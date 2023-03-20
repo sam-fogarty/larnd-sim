@@ -22,8 +22,8 @@ from numba.core.errors import NumbaPerformanceWarning
 
 from tqdm import tqdm
 
-from larndsim import consts
-from larndsim.util import CudaDict, batching
+from larndsim_NEST import consts
+from larndsim_NEST.util import CudaDict, batching
 
 SEED = int(time())
 
@@ -259,10 +259,18 @@ def run_simulation(input_filename,
     # and the position and number of electrons after drifting (drifting module)
     print("Quenching electrons..." , end="")
     start_quenching = time()
-    quenching.quench[BPG,TPB](tracks, physics.BIRKS)
+    nest_filename = "../NEST/NEST_electron-energy_and_recombination-factors_Efield500_1keV_to_5000keV.h5"
+    nest_file = h5py.File(nest_filename)
+    energies = np.array(nest_file['NEST']['E_start'])
+    recombination = np.array(nest_file['NEST']['R'])
+    energy = tracks['E_start']
+    MeV_to_keV = 1000
+    recomb = np.interp(energy*MeV_to_keV, energies, recombination)
+
+    quenching.quench[BPG,TPB](tracks, physics.NEST, recomb)
     end_quenching = time()
     print(f" {end_quenching-start_quenching:.2f} s")
-
+    
     print("Drifting electrons...", end="")
     start_drifting = time()
     drifting.drift[BPG,TPB](tracks)
