@@ -22,9 +22,9 @@ from .consts.units import mV, e
 from .consts import units
 
 #: Maximum number of ADC values stored per pixel
-MAX_ADC_VALUES = 20
+MAX_ADC_VALUES = 12
 #: Discrimination threshold in e-
-DISCRIMINATION_THRESHOLD = 7e3 * e
+DISCRIMINATION_THRESHOLD = 6e3 * e
 #: ADC hold delay in clock cycles
 ADC_HOLD_DELAY = 15
 #: ADC busy delay in clock cycles
@@ -40,9 +40,9 @@ GAIN = 4 * mV / (1e3 * e)
 #: Buffer risetime in :math:`\mu s` (set >0 to include buffer response simulation)
 BUFFER_RISETIME = 0.100
 #: Common-mode voltage in :math:`mV`
-V_CM = 288 * mV
+V_CM = 288.28125 * mV
 #: Reference voltage in :math:`mV`
-V_REF = 1300 * mV
+V_REF = 1300.78125 * mV
 #: Pedestal voltage in :math:`mV`
 V_PEDESTAL = 580 * mV
 #: Number of ADC counts
@@ -54,7 +54,8 @@ UNCORRELATED_NOISE_CHARGE = 500 * e
 #: Discriminator noise in e-
 DISCRIMINATOR_NOISE = 650 * e
 #: Average time between events in microseconds
-EVENT_RATE = 100000 # 10Hz
+RATE = 600 # Hz
+EVENT_RATE = 1/RATE * 1e6
 
 import logging
 logging.basicConfig()
