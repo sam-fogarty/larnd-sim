@@ -9,6 +9,11 @@
 This software aims to simulate the light readout and the pixelated charge readout of a Liquid Argon Time Projection Chamber. It consists of a set of highly-parallelized algorithms implemented on the [CUDA architecture](https://developer.nvidia.com/cuda-toolkit) using [Numba](https://numba.pydata.org).
 
 *This is a forked version of larnd-sim that allows for using the LAr NEST model*
+To install nestpy run:
+```bash
+pip install nestpy
+```
+Then install larnd-sim like normal, which will create a seperate larnd-sim (that can be distinct from a main larnd-sim installation) called `larnd-sim_NEST`.
 
 Software documentation is available [here](https://dune.github.io/larnd-sim/index.html).
 
