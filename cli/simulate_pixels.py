@@ -84,6 +84,7 @@ def run_simulation(input_filename,
                    detector_properties,
                    simulation_properties,
                    output_filename,
+                   nest_filename,
                    response_file='../larndsim/bin/response_44.npy',
                    light_lut_filename='../larndsim/bin/lightLUT.npz',
                    light_det_noise_filename='../larndsim/bin/light_noise-module0.npy',
@@ -103,6 +104,8 @@ def run_simulation(input_filename,
             the simulation properties
         output_filename (str): path of the HDF5 output file. If not specified
             the output is added to the input file.
+        nest_filename (str): path to HDF5 file containing 
+            LAr nest recombination values and energies.
         response_file (str, optional): path of the Numpy array containing the pre-calculated
             field responses. Defaults to ../larndsim/bin/response_44.npy.
         light_lut_file (str, optional): path of the Numpy array containing the light
@@ -127,6 +130,7 @@ def run_simulation(input_filename,
     print("Simulation properties file:", simulation_properties)
     print("edep-sim input file:", input_filename)
     print("Response file:", response_file)
+    print('NEST filename: ', nest_filename)
     if bad_channels:
         print("Disabled channel list: ", bad_channels)
 
@@ -259,7 +263,7 @@ def run_simulation(input_filename,
     # and the position and number of electrons after drifting (drifting module)
     print("Quenching electrons..." , end="")
     start_quenching = time()
-    nest_filename = "../NEST/NEST_electron-energy_and_recombination-factors_Efield500_1keV_to_5000keV.h5"
+    
     nest_file = h5py.File(nest_filename)
     energies = np.array(nest_file['NEST']['E_start'])
     recombination = np.array(nest_file['NEST']['R'])
