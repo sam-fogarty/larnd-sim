@@ -138,7 +138,7 @@ def run_simulation(input_filename,
 
     RangePush("load_detector_properties")
     consts.load_properties(detector_properties, pixel_layout, simulation_properties)
-    from larndsim.consts import light, detector, physics, sim
+    from larndsim_NEST.consts import light, detector, physics, sim
     RangePop()
     print("Event batch size:", sim.EVENT_BATCH_SIZE)
     print("Batch size:", sim.BATCH_SIZE)
@@ -147,7 +147,7 @@ def run_simulation(input_filename,
     RangePush("load_larndsim_modules")
     # Here we load the modules after loading the detector properties
     # maybe can be implemented in a better way?
-    from larndsim import (active_volume, quenching, drifting, detsim, pixels_from_track, fee,
+    from larndsim_NEST import (active_volume, quenching, drifting, detsim, pixels_from_track, fee,
         lightLUT, light_sim)
     RangePop()
 
@@ -309,7 +309,7 @@ def run_simulation(input_filename,
     track_ids = cp.array(np.arange(len(tracks)), dtype='i4')
     # copy to device
     track_ids = cp.asarray(np.arange(segment_ids.shape[0], dtype=int))
-
+    tot_evids = np.unique(tracks[sim.EVENT_SEPARATOR])
     # create a lookup table for event timestamps
     if sim.IS_SPILL_SIM:
         event_times = cp.arange(tracks[sim.EVENT_SEPARATOR].max()+1) * sim.SPILL_PERIOD

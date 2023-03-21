@@ -27,12 +27,12 @@ if 'SKIP_CUPY_INSTALL' in os.environ:
 import setuptools
 
 setuptools.setup(
-    name="larndsim",
+    name="larndsim_NEST",
     version=VER,
     author="DUNE collaboration",
     author_email="roberto@lbl.gov",
     description="Simulation framework for the DUNE LArND",
-    url="https://github.com/DUNE/larnd-sim",
+    url="https://github.com/sam-fogarty/larnd-sim",
     packages=setuptools.find_packages(),
     scripts=["cli/simulate_pixels.py", "cli/dumpTree.py"],
     install_requires=reqs,
