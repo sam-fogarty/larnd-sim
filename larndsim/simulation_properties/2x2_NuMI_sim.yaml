@@ -6,3 +6,4 @@ if_active_volume_check: 0    # boolean
 spill_period: 1.2e6          # microseconds
 event_separator: 'eventID'   # 'eventID'
 max_events_per_file: 1000
+default_recombination_model: 2 # BOX: 1; BIRKS: 2; NEST: 3

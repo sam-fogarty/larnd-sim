@@ -164,6 +164,7 @@ def run_simulation(input_filename,
     print("Event batch size:", sim.EVENT_BATCH_SIZE)
     print("Batch size:", sim.BATCH_SIZE)
     print("Write batch size:", sim.WRITE_BATCH_SIZE)
+    print("Default recombination model:", sim.DEFAULT_RECOMBINATION_MODEL)
 
     RangePush("load_larndsim_modules")
     # Here we load the modules after loading the detector properties
@@ -310,7 +311,7 @@ def run_simulation(input_filename,
     logger.start()
     logger.take_snapshot()
     start_quenching = time()
-    quenching.quench[BPG,TPB](tracks, physics.BIRKS)
+    quenching.quench[BPG,TPB](tracks, sim.DEFAULT_RECOMBINATION_MODEL)
     end_quenching = time()
     logger.take_snapshot()
     logger.archive('quenching')

@@ -19,3 +19,4 @@ W_ION = 23.6e-6
 ## Quenching parameters
 BOX = 1
 BIRKS = 2
+NEST = 3

@@ -21,6 +21,7 @@ SPILL_PERIOD = 1.2e6  # units = microseconds
 # We mod event IDs by MAX_EVENTS_PER_FILE to get zero-based IDs for indexing
 # purposes; see comments in simulate_pixels.py
 MAX_EVENTS_PER_FILE = 1000
+DEFAULT_RECOMBINATION_MODEL = 2 # BOX: 1; BIRKS: 2; NEST: 3
 
 def set_simulation_properties(simprop_file):
     """
@@ -41,6 +42,7 @@ def set_simulation_properties(simprop_file):
     global IF_ACTIVE_VOLUME_CHECK
     global SPILL_PERIOD
     global MAX_EVENTS_PER_FILE
+    global DEFAULT_RECOMBINATION_MODEL
     
 
     with open(simprop_file) as df:
@@ -54,3 +56,4 @@ def set_simulation_properties(simprop_file):
     IF_ACTIVE_VOLUME_CHECK = simprop['if_active_volume_check']
     SPILL_PERIOD = float(simprop['spill_period'])
     MAX_EVENTS_PER_FILE = simprop['max_events_per_file']
+    DEFAULT_RECOMBINATION_MODEL = simprop['default_recombination_model']
