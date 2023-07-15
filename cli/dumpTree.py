@@ -25,7 +25,7 @@ segments_dtype = np.dtype([("eventID","u4"),("vertexID", "u8"), ("segment_id", "
                            ("pixel_plane", "i4"), ("t_end", "f4"),
                            ("dEdx", "f4"), ("dE", "f4"), ("t", "f4"),
                            ("y", "f4"), ("x", "f4"), ("z", "f4"),
-                           ("n_photons","f4")], align=True)
+                           ("n_photons","f4"), ("traj_pxyz_start", "f4", (3,))], align=True)
 
 trajectories_dtype = np.dtype([("eventID","u4"), ("vertexID", "u8"),
                                ("trackID", "u4"), ("local_trackID", "u4"), ("parentID", "i4"),
@@ -339,6 +339,8 @@ def dump(input_file, output_file):
                 segment[iHit]["tran_diff"] = 0
                 segment[iHit]["pixel_plane"] = 0
                 segment[iHit]["n_photons"] = 0
+                traj_pxyz_start = trajectories[hitSegment.Contrib[0]]["pxyz_start"]
+                segment[iHit]["traj_pxyz_start"] = (traj_pxyz_start[0], traj_pxyz_start[1], traj_pxyz_start[2])
 
             segments_list.append(segment)
 
