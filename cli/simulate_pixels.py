@@ -25,6 +25,8 @@ from tqdm import tqdm
 from larndsim import consts
 from larndsim.util import CudaDict, batching, memory_logger
 
+import larnestpy
+
 SEED = int(time())
 
 LOGO = """
@@ -310,7 +312,8 @@ def run_simulation(input_filename,
     logger.start()
     logger.take_snapshot()
     start_quenching = time()
-    quenching.quench[BPG,TPB](tracks, physics.BIRKS)
+    calc = larnestpy.LArNEST()
+    tracks = np.vectorize(quenching.quench, otypes=[object])(tracks, calc, tracks.dtype).astype(tracks.dtype)
     end_quenching = time()
     logger.take_snapshot()
     logger.archive('quenching')
