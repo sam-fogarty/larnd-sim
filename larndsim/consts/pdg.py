@@ -12,7 +12,6 @@ kaon = 321
 pion = 211
 deuteron = 1000010020
 alpha = 1000020040
-argon_40 = 1000180400
 
 # neutral
 gamma = 22
