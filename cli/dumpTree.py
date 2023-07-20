@@ -22,7 +22,7 @@ segments_dtype = np.dtype([("eventID","u4"),("vertexID", "u8"), ("segment_id", "
                            ("y_start", "f4"), ("t_start", "f4"),
                            ("t0_start", "f8"), ("t0_end", "f8"), ("t0", "f8"),
                            ("dx", "f4"), ("long_diff", "f4"),
-                           ("pixel_plane", "i4"), ("t_end", "f4"),
+                           ("pixel_plane", "i4"), ("t_end", "f4"), ("p_mag_traj_start", "f4"),
                            ("dEdx", "f4"), ("dE", "f4"), ("t", "f4"),
                            ("y", "f4"), ("x", "f4"), ("z", "f4"),
                            ("n_photons","f4")], align=True)
@@ -334,6 +334,7 @@ def dump(input_file, output_file):
                 segment[iHit]["t"] = 0
                 segment[iHit]["dEdx"] = hitSegment.GetEnergyDeposit() / dx if dx > 0 else 0
                 segment[iHit]["pdgId"] = trajectories[hitSegment.Contrib[0]]["pdgId"]
+                segment[iHit]["p_mag_traj_start"] = sqrt(sum(trajectories[hitSegment.Contrib[0]]["pxyz_start"]**2))
                 segment[iHit]["n_electrons"] = 0
                 segment[iHit]["long_diff"] = 0
                 segment[iHit]["tran_diff"] = 0
