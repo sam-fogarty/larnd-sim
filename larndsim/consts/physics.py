@@ -19,3 +19,7 @@ W_ION = 23.6e-6
 ## Quenching parameters
 BOX = 1
 BIRKS = 2
+NEST_ER = 3
+NEST_ALPHA = 4
+NEST_NR = 5
+USE_DEFAULT_MODEL = False
