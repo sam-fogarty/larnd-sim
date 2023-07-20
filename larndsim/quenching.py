@@ -3,39 +3,171 @@ Module to implement the quenching of the ionized electrons
 through the detector
 """
 
-from math import log, isnan
+from math import log, isnan, sqrt
 from numba import cuda
+from numba import njit
 
-from .consts import detector, physics, light
+from .consts import detector, physics, light, pdg
+
+@njit
+def BOX(dEdx):
+    """
+    Box recombination model. Baller, 2013 JINST 8 P08005
+    
+    Args:
+        dEdx (float): Segment dE/dx in MeV/cm
+    """
+    csi = physics.BOX_BETA * dEdx / (detector.E_FIELD * detector.LAR_DENSITY)
+    return max(0, log(physics.BOX_ALPHA + csi)/csi)
+
+@njit
+def BIRKS(dEdx):
+    """
+    Birks recombination model. Amoruso, et al NIM A 523 (2004) 275
+    
+    Args:
+        dEdx (float): Segment dE/dx in MeV/cm
+    """
+    return physics.BIRKS_Ab / (1 + physics.BIRKS_kb * dEdx / (detector.E_FIELD * detector.LAR_DENSITY))
+
+@njit
+def NEST_ER(E):
+    """
+    LArNEST electron recoil (ER) recombination model used for low-energy electrons. https://github.com/NESTCollaboration/larnestpy
+    
+    Args:
+        E (float): Starting energy in MeV of the trajectory corresponding to the current segment.
+    """
+    pass
+
+@njit
+def NEST_ALPHA(E):
+    """
+    LArNEST alpha recombination model. https://github.com/NESTCollaboration/larnestpy
+    
+    Args:
+        E (float): Segment dE in MeV.
+    """
+    pass
+
+@njit
+def NEST_NR(E):
+    """
+    LArNEST nuclear recoil (NR) recombination model. https://github.com/NESTCollaboration/larnestpy
+    
+    Args:
+        E (float): Segment dE in MeV.
+    """
+    pass
+
+@njit
+def DEFAULT_MODEL(default_model, dEdx):
+    """
+    Function for calling the default model and by pass the if statements. Note only two default models
+    
+    Args:
+        default_model (int): integer corresponding to the default recombination model
+    """
+    recomb = 0
+    if default_model == physics.BOX:
+        recomb = BOX(dEdx)
+    elif default_model == physics.BIRKS:
+        recomb = BIRKS(dEdx)
+    else:
+        raise ValueError("Only `physics.BOX` and `physics.BIRKS` supported as default recombination models.")
+    return recomb
+
+@njit
+def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_model):
+    """
+    Function to pick a recombination model for a particular segment. 
+    
+    Args:
+        model (int): recombination model number, as defined in consts.physics.
+        E (float): energy in MeV, either corresponding to particle starting energy or segment dE
+        dEdx (float): segment dE/dx in MeV/cm
+        er_energy_threshold (float): threshold energy in MeV for using NEST ER model 
+            (NEST ER is used if particle energy is less than this threshold). Only relevant for electrons. but must still be specified.
+        default_model (int): number corresponding to the model that should be used 
+            if the segment pdgID is not in the pdg->model dictionary in the simulation properties file.
+        use_default_model (bool): if True, bypasses the if statements and always uses the default model.
+    
+    """
+    recomb = 0
+    if use_default_model:
+        recomb = DEFAULT_MODEL(default_model, dEdx)
+    elif model == physics.BOX:
+        recomb = BOX(dEdx)
+    elif model == physics.BIRKS:
+        recomb = BIRKS(dEdx)
+    elif model == physics.NEST_ER and E < er_energy_threshold: 
+        recomb = NEST_ER(E)
+    elif model == physics.NEST_ALPHA:
+        recomb = NEST_ALPHA(E)
+    elif model == physics.NEST_NR:
+        recomb = NEST_NR(E)
+    else:
+        recomb = DEFAULT_MODEL(default_model, dEdx)
+        
+    return recomb
+
+@njit
+def find_index(array_to_search, value):
+    """
+    Find index of value in array.
+    
+    Args:
+        array_to_search (:obj:`numpy.ndarray`): array in which to search for the index of `value`.
+        value (int): value to search for in `array_to_search`.
+    """
+    for i, element in enumerate(array_to_search):
+        if element == value:
+            return i
+    return -1
 
 @cuda.jit
-def quench(tracks, mode):
+def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_model):
     """
     This CUDA kernel takes as input an array of track segments and calculates
     the number of electrons and photons that reach the anode plane after recombination.
-    It is possible to pick among two models: Box (Baller, 2013 JINST 8 P08005) or
-    Birks (Amoruso, et al NIM A 523 (2004) 275).
+    There are currently five models implemented: Box (Baller, 2013 JINST 8 P08005), 
+    Birks (Amoruso, et al NIM A 523 (2004) 275), LArNEST electron recoil (ER), 
+    LArNEST alpha, and LArNEST nuclear recoil (NR). For LArNEST, see https://github.com/NESTCollaboration/larnestpy.
 
     Args:
-        tracks (:obj:`numpy.ndarray`): array containing the tracks segment information
-        mode (int): recombination model (physics.BOX or physics.BIRKS).
+        tracks (:obj:`numpy.ndarray`): array containing the tracks segment information.
+        d_pdg_codes (:obj:`numpy.ndarray`): array containing pdg codes from the `pdg_to_recombination_model` dictionary 
+            in simulation properties file.
+        d_model_codes (:obj:`numpy.ndarray`): array containing pdg codes from the `pdg_to_recombination_model` dictionary 
+            in simulation properties file.
+        er_energy_threshold (float): energy threshold for using the NEST ER model.
+        default_model (int): default recombination model.
     """
     itrk = cuda.grid(1)
 
     if itrk < tracks.shape[0]:
         dEdx = tracks[itrk]["dEdx"]
         dE = tracks[itrk]["dE"]
-
-        recomb = 0
-        if mode == physics.BOX:
-            # Baller, 2013 JINST 8 P08005
-            csi = physics.BOX_BETA * dEdx / (detector.E_FIELD * detector.LAR_DENSITY)
-            recomb = max(0, log(physics.BOX_ALPHA + csi)/csi)
-        elif mode == physics.BIRKS:
-            # Amoruso, et al NIM A 523 (2004) 275
-            recomb = physics.BIRKS_Ab / (1 + physics.BIRKS_kb * dEdx / (detector.E_FIELD * detector.LAR_DENSITY))
+        pdgID = tracks[itrk]['pdgId']
+        
+        recomb, energy = 0, 0
+        if physics.USE_DEFAULT_MODEL:
+            model = -1
         else:
-            raise ValueError("Invalid recombination mode: must be 'physics.BOX' or 'physics.BIRKS'")
+            # get energy value if relevant for this segment
+            if abs(pdgID) == pdg.electron:
+                p_start = tracks[itrk]['p_mag_traj_start']
+                energy = sqrt(0.511*0.511 + p_start*p_start) - 0.511
+            elif pdgID == pdg.alpha or pdgID == pdg.argon_40:
+                energy = dE
+
+            # look up the model to use for this segment
+            model = -1
+            index_of_model = find_index(d_pdg_codes, pdgID)
+            if index_of_model != -1:
+                model = d_model_codes[index_of_model]
+        
+        recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL)
 
         if isnan(recomb):
             raise RuntimeError("Invalid recombination value")
