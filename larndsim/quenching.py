@@ -44,16 +44,6 @@ def NEST_ER(E, er_energies, er_recomb_factors):
     return recomb
 
 @njit
-def NEST_ALPHA(E):
-    """
-    LArNEST alpha recombination model. https://github.com/NESTCollaboration/larnestpy
-    
-    Args:
-        E (float): Segment dE in MeV.
-    """
-    return physics.ALPHA_R_FACTOR
-
-@njit
 def NEST_NR(E, nr_energies, nr_recomb_factors):
     """
     LArNEST nuclear recoil (NR) recombination model. https://github.com/NESTCollaboration/larnestpy
@@ -63,6 +53,16 @@ def NEST_NR(E, nr_energies, nr_recomb_factors):
     """
     recomb = linear_interpolation(E, nr_energies, nr_recomb_factors, physics.NR_ASYMPTOTE_AVG)
     return recomb
+
+@njit
+def NEST_ALPHA(E):
+    """
+    LArNEST alpha recombination model. https://github.com/NESTCollaboration/larnestpy
+    
+    Args:
+        E (float): Segment dE in MeV.
+    """
+    return physics.ALPHA_R_FACTOR
 
 
 @njit
@@ -106,7 +106,7 @@ def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_m
         recomb = BOX(dEdx)
     elif model == physics.BIRKS:
         recomb = BIRKS(dEdx)
-    elif model == physics.NEST_ER and E < er_energy_threshold: 
+    elif model == physics.NEST_ER: 
         recomb = NEST_ER(E, E_ER, R_ER)
     elif model == physics.NEST_ALPHA:
         recomb = NEST_ALPHA(E)
@@ -183,20 +183,24 @@ def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_mode
             if abs(pdgID) == pdg.electron:
                 p_start = tracks[itrk]['p_mag_traj_start']
                 energy = sqrt(0.511*0.511 + p_start*p_start) - 0.511
-            elif pdgID == pdg.alpha or pdgID == pdg.argon_40:
+                if energy > er_energy_threshold:
+                    model = default_model
+            elif pdgID == pdg.alpha:
                 energy = dE
 
             # look up the model to use for this segment
             model = -1
-            index_of_model = find_index(d_pdg_codes, pdgID)
+            index_of_model = find_index(d_pdg_codes, abs(pdgID))
             if index_of_model != -1:
                 model = d_model_codes[index_of_model]
-        
+            if pdgID > 1000000000 and pdgID != pdg.alpha and pdgID != pdg.deuteron:
+                model = 5 # NR
+                energy = dE
         recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL,\
                            E_ER, E_NR, R_ER, R_NR)
-
+        
         if isnan(recomb):
             raise RuntimeError("Invalid recombination value")
-
+        
         tracks[itrk]["n_electrons"] = recomb * dE / physics.W_ION
         tracks[itrk]["n_photons"] = (dE/light.W_PH - tracks[itrk]["n_electrons"]) * light.SCINT_PRESCALE
