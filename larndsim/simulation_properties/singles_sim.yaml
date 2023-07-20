@@ -14,7 +14,7 @@ pdg_to_recombination_model: # Box 1; Birks 2; NEST_ER 3; NEST_ALPHA 4; NEST_NR 5
     321: 2 # kaon
     211: 2 # pion
     1000020040: 4 # alpha
-    1000180400: 5 # 40Ar
     1000010020: 2 # deuteron
+    2112: 5 # neutron
 er_energy_threshold: 1.0 # MeV
 default_recombination_model: 2 # 1 or 2
