@@ -54,14 +54,16 @@ def NEST_ALPHA(E):
     return physics.ALPHA_R_FACTOR
 
 @njit
-def NEST_NR(E):
+def NEST_NR(E, nr_energies, nr_recomb_factors):
     """
     LArNEST nuclear recoil (NR) recombination model. https://github.com/NESTCollaboration/larnestpy
     
     Args:
         E (float): Segment dE in MeV.
     """
-    pass
+    recomb = linear_interpolation(E, nr_energies, nr_recomb_factors, physics.NR_ASYMPTOTE_AVG)
+    return recomb
+
 
 @njit
 def DEFAULT_MODEL(default_model, dEdx):
@@ -82,7 +84,7 @@ def DEFAULT_MODEL(default_model, dEdx):
 
 @njit
 def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_model,\
-               er_energies, er_recomb_factors):
+               E_ER, E_NR, R_ER, R_NR):
     """
     Function to pick a recombination model for a particular segment. 
     
@@ -105,11 +107,11 @@ def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_m
     elif model == physics.BIRKS:
         recomb = BIRKS(dEdx)
     elif model == physics.NEST_ER and E < er_energy_threshold: 
-        recomb = NEST_ER(E, er_energies, er_recomb_factors)
+        recomb = NEST_ER(E, E_ER, R_ER)
     elif model == physics.NEST_ALPHA:
         recomb = NEST_ALPHA(E)
     elif model == physics.NEST_NR:
-        recomb = NEST_NR(E)
+        recomb = NEST_NR(E, E_NR, R_NR)
     else:
         recomb = DEFAULT_MODEL(default_model, dEdx)
         
@@ -148,8 +150,8 @@ def linear_interpolation(x, x_data, y_data, default_value):
     return default_value  # return some default value for x out of range
 
 @cuda.jit
-def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_model, \
-          er_energies, er_recomb_factors):
+def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_model,\
+          E_ER, E_NR, R_ER, R_NR):
     """
     This CUDA kernel takes as input an array of track segments and calculates
     the number of electrons and photons that reach the anode plane after recombination.
@@ -190,8 +192,8 @@ def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_mode
             if index_of_model != -1:
                 model = d_model_codes[index_of_model]
         
-        recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL, \
-                           er_energies, er_recomb_factors)
+        recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL,\
+                           E_ER, E_NR, R_ER, R_NR)
 
         if isnan(recomb):
             raise RuntimeError("Invalid recombination value")
