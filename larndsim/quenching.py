@@ -31,14 +31,17 @@ def BIRKS(dEdx):
     return physics.BIRKS_Ab / (1 + physics.BIRKS_kb * dEdx / (detector.E_FIELD * detector.LAR_DENSITY))
 
 @njit
-def NEST_ER(E):
+def NEST_ER(E, er_energies, er_recomb_factors):
     """
     LArNEST electron recoil (ER) recombination model used for low-energy electrons. https://github.com/NESTCollaboration/larnestpy
     
     Args:
         E (float): Starting energy in MeV of the trajectory corresponding to the current segment.
+        er_energies (:obj:`numpy.ndarray`): ER energies from LArNEST.
+        er_recomb_factors (:obj:`numpy.ndarray`): ER recombination factors from LArNEST.
     """
-    pass
+    recomb = linear_interpolation(E, er_energies, er_recomb_factors, physics.ER_ASYMPTOTE_AVG)
+    return recomb
 
 @njit
 def NEST_ALPHA(E):
@@ -48,7 +51,7 @@ def NEST_ALPHA(E):
     Args:
         E (float): Segment dE in MeV.
     """
-    pass
+    return physics.ALPHA_R_FACTOR
 
 @njit
 def NEST_NR(E):
@@ -78,7 +81,8 @@ def DEFAULT_MODEL(default_model, dEdx):
     return recomb
 
 @njit
-def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_model):
+def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_model,\
+               er_energies, er_recomb_factors):
     """
     Function to pick a recombination model for a particular segment. 
     
@@ -101,7 +105,7 @@ def pick_model(model, E, dEdx, er_energy_threshold, default_model, use_default_m
     elif model == physics.BIRKS:
         recomb = BIRKS(dEdx)
     elif model == physics.NEST_ER and E < er_energy_threshold: 
-        recomb = NEST_ER(E)
+        recomb = NEST_ER(E, er_energies, er_recomb_factors)
     elif model == physics.NEST_ALPHA:
         recomb = NEST_ALPHA(E)
     elif model == physics.NEST_NR:
@@ -125,8 +129,27 @@ def find_index(array_to_search, value):
             return i
     return -1
 
+@njit
+def linear_interpolation(x, x_data, y_data, default_value):
+    """
+    Linearly interpolation of plotting data, x and y.
+    
+    Args:
+        x (float): value to evaluate interpolation at.
+        x_data (:obj:`numpy.ndarray`): x data of graph.
+        y_data (:obj:`numpy.ndarray`): y data of graph.
+        default_value (float): value to return if x is out of range.
+    """
+    for i in range(x_data.shape[0] - 1):
+        if x_data[i] <= x <= x_data[i + 1]:
+            # Compute the interpolation
+            t = (x - x_data[i]) / (x_data[i + 1] - x_data[i])
+            return (1 - t) * y_data[i] + t * y_data[i + 1]
+    return default_value  # return some default value for x out of range
+
 @cuda.jit
-def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_model):
+def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_model, \
+          er_energies, er_recomb_factors):
     """
     This CUDA kernel takes as input an array of track segments and calculates
     the number of electrons and photons that reach the anode plane after recombination.
@@ -167,7 +190,8 @@ def quench(tracks, d_pdg_codes, d_model_codes, er_energy_threshold, default_mode
             if index_of_model != -1:
                 model = d_model_codes[index_of_model]
         
-        recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL)
+        recomb = pick_model(model, energy, dEdx, er_energy_threshold, default_model, physics.USE_DEFAULT_MODEL, \
+                           er_energies, er_recomb_factors)
 
         if isnan(recomb):
             raise RuntimeError("Invalid recombination value")
