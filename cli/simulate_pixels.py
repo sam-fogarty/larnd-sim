@@ -25,6 +25,8 @@ from tqdm import tqdm
 from larndsim import consts
 from larndsim.util import CudaDict, batching, memory_logger
 
+import os
+
 SEED = int(time())
 
 LOGO = """
@@ -93,8 +95,9 @@ def run_simulation(input_filename,
                    NEST_ER_NR_filename='../larndsim/bin/NEST_ER_NR_up_to_5MeV.npz',
                    light_simulated=None,
                    bad_channels=None,
-                   n_tracks=None,
+                   n_events=None,
                    pixel_thresholds_file=None,
+                   pixel_gains_file=None,
                    rand_seed=None,
                    save_memory=None):
     """
@@ -116,15 +119,22 @@ def run_simulation(input_filename,
             look-up table. Defaults to ../larndsim/bin/lightLUT.npy.
         bad_channels (str, optional): path of the YAML file containing the channels to be
             disabled. Defaults to None
-        n_tracks (int, optional): number of tracks to be simulated. Defaults to None
+        n_events (int, optional): number of events to be simulated. Defaults to None
             (all tracks).
-        pixel_thresholds_file (str): path to npz file containing pixel thresholds. Defaults
+        pixel_thresholds_file (str, optional): path to npz file containing pixel thresholds. Defaults
             to None.
+        pixel_gains_file (str): path to npz file containing pixel gain values. Defaults to None (the value of fee.GAIN)
         rand_seed (int, optional): the random number generator seed that can be set through 
             a command-line
         save_memory (string path, optional): if non-empty, this is used as a filename to 
             store memory snapshot information
     """
+    
+    if not os.path.exists(input_filename):
+        raise Exception(f'Input file {input_filename} does not exist.')
+    if os.path.exists(output_filename):
+        raise Exception(f'Output file {output_filename} already exists.')
+    
     logger = memory_logger(save_memory is None)
     logger.start()
     logger.take_snapshot()
@@ -176,11 +186,17 @@ def run_simulation(input_filename,
     RangePush("load_pixel_thresholds")
     if pixel_thresholds_file is not None:
         print("Pixel thresholds file:", pixel_thresholds_file)
-        pixel_thresholds_lut = CudaDict.load(pixel_thresholds_file, 256)
+        pixel_thresholds_lut = CudaDict.load(pixel_thresholds_file, 512)
     else:
         pixel_thresholds_lut = CudaDict(cp.array([fee.DISCRIMINATION_THRESHOLD]), 1, 1)
     RangePop()
 
+    RangePush("load_pixel_gains")
+    if pixel_gains_file is not None:
+        print("Pixel gains file:", pixel_gains_file)
+        pixel_gains_lut = CudaDict.load(pixel_gains_file, 512)
+    RangePop()
+    
     RangePush("load_hd5_file")
     print("Loading track segments..." , end="")
     start_load = time()
@@ -243,9 +259,21 @@ def run_simulation(input_filename,
     print("******************\nRUNNING SIMULATION\n******************")
     logger.start()
     logger.take_snapshot()
-    # Reduce dataset if not all tracks to be simulated
-    if n_tracks:
-        tracks = tracks[:n_tracks]
+    # Reduce dataset if not all events are to be simulated, being careful of gaps
+    if n_events:
+        print(f'Selecting only the first {n_events} events for simulation.')
+        max_eventID = np.unique(tracks[sim.EVENT_SEPARATOR])[n_events-1]
+        segment_ids = segment_ids[tracks[sim.EVENT_SEPARATOR] <= max_eventID]
+        tracks = tracks[tracks[sim.EVENT_SEPARATOR] <= max_eventID]
+        
+        if input_has_trajectories:
+            trajectories = trajectories[trajectories[sim.EVENT_SEPARATOR] <= max_eventID]
+        if input_has_vertices:
+            vertices = vertices[vertices[sim.EVENT_SEPARATOR] <= max_eventID]
+        if input_has_genie_hdr:
+            genie_hdr = genie_hdr[genie_hdr[sim.EVENT_SEPARATOR] <= max_eventID]
+        if input_has_genie_stack:
+            genie_stack = genie_stack[genie_stack[sim.EVENT_SEPARATOR] <= max_eventID]
 
     # Here we swap the x and z coordinates of the tracks
     # because of the different convention in larnd-sim wrt edep-sim
@@ -297,7 +325,7 @@ def run_simulation(input_filename,
         # The spill starts are marking the start of 
         # The space between spills will be accounted for in the
         # packet timestamps through the event_times array below
-        localSpillIDs = tracks[sim.EVENT_SEPARATOR] - tracks[0][sim.EVENT_SEPARATOR]
+        localSpillIDs = localSpillIDs = tracks[sim.EVENT_SEPARATOR] - (tracks[sim.EVENT_SEPARATOR] // sim.MAX_EVENTS_PER_FILE) * sim.MAX_EVENTS_PER_FILE
         tracks['t0_start'] = tracks['t0_start'] - localSpillIDs*sim.SPILL_PERIOD
         tracks['t0_end'] = tracks['t0_end'] - localSpillIDs*sim.SPILL_PERIOD
         tracks['t0'] = tracks['t0'] - localSpillIDs*sim.SPILL_PERIOD
@@ -432,7 +460,7 @@ def run_simulation(input_filename,
 
     # accumulate results for periodic file saving
     results_acc = defaultdict(list)
-    def save_results(event_times, is_first_event, results):
+    def save_results(event_times, is_first_batch, results):
         '''
         results is a dictionary with the following keys
 
@@ -452,9 +480,9 @@ def run_simulation(input_filename,
          - light_waveforms: waveforms of each light trigger
          - light_waveforms_true_track_id: true track ids for each tick in each waveform
          - light_waveforms_true_photons: equivalent pe for each track at each tick in each waveform
-
-        returns the timestamp of the last event simulated
-
+        
+        returns is_first_batch = False
+        
         Note: can't handle empty inputs
         '''
         for key in list(results.keys()):
@@ -465,6 +493,8 @@ def run_simulation(input_filename,
         if light.LIGHT_SIMULATED:
             # prep arrays for embedded triggers in charge data stream
             light_trigger_modules = np.array([detector.TPC_TO_MODULE[tpc] for tpc in light.OP_CHANNEL_TO_TPC[results['light_op_channel_idx']][:,0]])
+            if light.LIGHT_TRIG_MODE == 1:
+                light_trigger_modules = np.array(results['trigger_type']+1)
             light_trigger_times = results['light_start_time'] + results['light_trigger_idx'] * light.LIGHT_TICK_SIZE
             light_trigger_event_ids = results['light_event_id']
         else:
@@ -481,7 +511,7 @@ def run_simulation(input_filename,
                            results['track_pixel_map'],
                            output_filename, # defined earlier in script
                            uniq_event_times,
-                           is_first_event=is_first_event,
+                           is_first_batch=is_first_batch,
                            light_trigger_times=light_trigger_times,
                            light_trigger_event_id=light_trigger_event_ids,
                            light_trigger_modules=light_trigger_modules,
@@ -494,18 +524,18 @@ def run_simulation(input_filename,
                                      results['light_op_channel_idx'],
                                      results['light_waveforms'],
                                      output_filename,
-                                     cp.asnumpy(event_times[np.unique(results['light_event_id'])]),
+                                     #cp.asnumpy(event_times[np.unique(results['light_event_id'])]),
+                                     uniq_event_times,
                                      results['light_waveforms_true_track_id'],
                                      results['light_waveforms_true_photons'])
-
-
-        return event_times[-1]
-
+        if is_first_batch:
+            is_first_batch = False
+        return is_first_batch
     logger.take_snapshot()
     logger.archive('preparation2')
 
 
-    last_time = 0
+    is_first_batch = True
     logger.start()
     logger.take_snapshot([0])
     for batch_mask in tqdm(batching.TPCBatcher(tracks, sim.EVENT_SEPARATOR, tpc_batch_size=sim.EVENT_BATCH_SIZE, tpc_borders=detector.TPC_BORDERS),
@@ -639,7 +669,7 @@ def run_simulation(input_filename,
             pixel_thresholds_lut.tpb = TPB
             pixel_thresholds_lut.bpg = BPG
             pixel_thresholds = pixel_thresholds_lut[unique_pix.ravel()].reshape(unique_pix.shape)
-
+            
             fee.get_adc_values[BPG, TPB](pixels_signals,
                                          pixels_tracks_signals,
                                          time_ticks,
@@ -649,8 +679,15 @@ def run_simulation(input_filename,
                                          rng_states,
                                          current_fractions,
                                          pixel_thresholds)
-
-            adc_list = fee.digitize(integral_list)
+            
+            # get list of adc values
+            if pixel_gains_file is not None:
+                pixel_gains = cp.array(pixel_gains_lut[unique_pix.ravel()])
+                gain_list = pixel_gains[:, cp.newaxis] * cp.ones((1, fee.MAX_ADC_VALUES)) # makes array the same shape as integral_list
+                adc_list = fee.digitize(integral_list, gain_list)
+            else:
+                adc_list = fee.digitize(integral_list)
+            
             adc_event_ids = np.full(adc_list.shape, unique_eventIDs[0]) # FIXME: only works if looping on a single event
             RangePop()
 
@@ -716,7 +753,7 @@ def run_simulation(input_filename,
                 light_threshold = cp.repeat(cp.array(light.LIGHT_TRIG_THRESHOLD)[...,np.newaxis], light.OP_CHANNEL_PER_TRIG, axis=-1)
                 light_threshold = light_threshold.ravel()[op_channel.get()].copy()
                 light_threshold = light_threshold.reshape(-1, light.OP_CHANNEL_PER_TRIG)[...,0]
-                trigger_idx, trigger_op_channel_idx = light_sim.get_triggers(light_response, light_threshold, op_channel)
+                trigger_idx, trigger_op_channel_idx, trigger_type = light_sim.get_triggers(light_response, light_threshold, op_channel)
                 digit_samples = ceil((light.LIGHT_TRIG_WINDOW[1] + light.LIGHT_TRIG_WINDOW[0]) / light.LIGHT_DIGIT_SAMPLE_SPACING)
                 TPB = (1,1,64)
                 BPG = (max(ceil(trigger_idx.shape[0] / TPB[0]),1),
@@ -731,12 +768,13 @@ def run_simulation(input_filename,
                 results_acc['light_event_id'].append(cp.full(trigger_idx.shape[0], unique_eventIDs[0])) # FIXME: only works if looping on a single event
                 results_acc['light_start_time'].append(cp.full(trigger_idx.shape[0], light_t_start))
                 results_acc['light_trigger_idx'].append(trigger_idx)
+                results_acc['trigger_type'].append(trigger_type)
                 results_acc['light_op_channel_idx'].append(trigger_op_channel_idx)
                 results_acc['light_waveforms'].append(light_digit_signal)
                 results_acc['light_waveforms_true_track_id'].append(light_digit_signal_true_track_id)
                 results_acc['light_waveforms_true_photons'].append(light_digit_signal_true_photons)
-
-        if len(results_acc['event_id']) > sim.WRITE_BATCH_SIZE and len(np.concatenate(results_acc['event_id'], axis=0)) > 0:
+        
+        if len(results_acc['event_id']) >= sim.WRITE_BATCH_SIZE and len(np.concatenate(results_acc['event_id'], axis=0)) > 0:
             last_time = save_results(event_times, is_first_event=last_time==0, results=results_acc)
             results_acc = defaultdict(list)
 
@@ -744,7 +782,7 @@ def run_simulation(input_filename,
 
     # Always save results after last iteration
     if len(results_acc['event_id']) >0 and len(np.concatenate(results_acc['event_id'], axis=0)) > 0:
-        save_results(event_times, is_first_event=last_time==0, results=results_acc)
+        is_first_batch = save_results(event_times, is_first_batch, results=results_acc)
 
     logger.take_snapshot([len(logger.log)])
 
