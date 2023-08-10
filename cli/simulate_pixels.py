@@ -92,6 +92,7 @@ def run_simulation(input_filename,
                    response_file='../larndsim/bin/response_44.npy',
                    light_lut_filename='../larndsim/bin/lightLUT.npz',
                    light_det_noise_filename='../larndsim/bin/light_noise-module0.npy',
+                   NEST_ER_NR_filename='../larndsim/bin/NEST_ER_NR_up_to_5MeV.npz',
                    light_simulated=None,
                    bad_channels=None,
                    n_events=None,
@@ -328,17 +329,23 @@ def run_simulation(input_filename,
         tracks['t0_start'] = tracks['t0_start'] - localSpillIDs*sim.SPILL_PERIOD
         tracks['t0_end'] = tracks['t0_end'] - localSpillIDs*sim.SPILL_PERIOD
         tracks['t0'] = tracks['t0'] - localSpillIDs*sim.SPILL_PERIOD
-
+    
+    # get NEST input parameters for quenching function call
+    d_pdg_codes = np.array(list(sim.PDG_TO_RECOMBINATION_MODEL.keys()), dtype=np.int32)
+    d_model_codes = np.array(list(sim.PDG_TO_RECOMBINATION_MODEL.values()), dtype=np.int32)
+    NEST_ER_NR = np.load(NEST_ER_NR_filename)
+    
     logger.take_snapshot()
     logger.archive('preparation')
-
+    
     # We calculate the number of electrons after recombination (quenching module)
     # and the position and number of electrons after drifting (drifting module)
     print("Quenching electrons..." , end="")
     logger.start()
     logger.take_snapshot()
     start_quenching = time()
-    quenching.quench[BPG,TPB](tracks, physics.BIRKS)
+    quenching.quench[BPG,TPB](tracks, d_pdg_codes, d_model_codes, sim.ER_ENERGY_THRESHOLD, sim.DEFAULT_RECOMBINATION_MODEL, 
+                             NEST_ER_NR['E_ER'], NEST_ER_NR['E_NR'], NEST_ER_NR['R_ER'], NEST_ER_NR['R_NR'])
     end_quenching = time()
     logger.take_snapshot()
     logger.archive('quenching')

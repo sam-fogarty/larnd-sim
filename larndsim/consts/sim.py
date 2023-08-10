@@ -19,6 +19,19 @@ IF_ACTIVE_VOLUME_CHECK = False
 SPILL_PERIOD = 1.2e6  # units = microseconds
 TRACKS_DSET_NAME = 'segments'
 
+PDG_TO_RECOMBINATION_MODEL = \
+        {11: 2,
+         13: 2,
+         15: 2,
+         2212: 2,
+         321: 2,
+         211: 2,
+         1000010020: 2,
+         1000020040: 2,
+         1000180400: 2}
+ER_ENERGY_THRESHOLD = 1.0 # MeV
+DEFAULT_RECOMBINATION_MODEL = 2
+
 # We mod event IDs by MAX_EVENTS_PER_FILE to get zero-based IDs for indexing
 # purposes; see comments in simulate_pixels.py
 MAX_EVENTS_PER_FILE = 1000
@@ -43,7 +56,10 @@ def set_simulation_properties(simprop_file):
     global SPILL_PERIOD
     global MAX_EVENTS_PER_FILE
     global TRACKS_DSET_NAME
-
+    global PDG_TO_RECOMBINATION_MODEL
+    global ER_ENERGY_THRESHOLD
+    global DEFAULT_RECOMBINATION_MODEL
+    
     with open(simprop_file) as df:
         simprop = yaml.load(df, Loader=yaml.FullLoader)
 
@@ -56,3 +72,6 @@ def set_simulation_properties(simprop_file):
     SPILL_PERIOD = float(simprop['spill_period'])
     MAX_EVENTS_PER_FILE = simprop['max_events_per_file']
     TRACKS_DSET_NAME = simprop['tracks_dset_name']
+    PDG_TO_RECOMBINATION_MODEL = simprop['pdg_to_recombination_model']
+    ER_ENERGY_THRESHOLD = simprop['er_energy_threshold']
+    DEFAULT_RECOMBINATION_MODEL = simprop['default_recombination_model']
