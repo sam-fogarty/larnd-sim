@@ -551,6 +551,8 @@ def get_adc_values(pixels_signals,
 
     vals_per_tick = offset_backtrack[-1] # #pix * backtracks
 
+    ntrks = min(num_backtrack[ip], current_fractions.shape[2])
+
     if ip < pixels_signals.shape[0]:
         curre = pixels_signals[ip]
         ic = 0
@@ -573,13 +575,13 @@ def get_adc_values(pixels_signals,
                     w = exp((jc - ic) * detector.TIME_SAMPLING / detector.BUFFER_RISETIME) * (1 - exp(-detector.TIME_SAMPLING/detector.BUFFER_RISETIME))
                     q += curre[jc] * detector.TIME_SAMPLING * w
 
-                    for itrk in range(num_backtrack[ip]):
+                    for itrk in range(ntrks):
                         idx = vals_per_tick * jc + offset_backtrack[ip] + itrk
                         current_fractions[ip][iadc][itrk] += pixels_signals_tracks[idx] * detector.TIME_SAMPLING * w
 
             elif ic < curre.shape[0]:
                 q += curre[ic] * detector.TIME_SAMPLING
-                for itrk in range(num_backtrack[ip]):
+                for itrk in range(ntrks):
                     idx = vals_per_tick * ic + offset_backtrack[ip] + itrk
                     current_fractions[ip][iadc][itrk] += pixels_signals_tracks[idx] * detector.TIME_SAMPLING
 
@@ -607,13 +609,13 @@ def get_adc_values(pixels_signals,
                             w = exp((jc - ic) * detector.TIME_SAMPLING / detector.BUFFER_RISETIME) * (1 - exp(-detector.TIME_SAMPLING/detector.BUFFER_RISETIME))
                             q += curre[jc] * detector.TIME_SAMPLING * w
 
-                            for itrk in range(num_backtrack[ip]):
+                            for itrk in range(ntrks):
                                 idx = vals_per_tick * jc + offset_backtrack[ip] + itrk
                                 current_fractions[ip][iadc][itrk] += pixels_signals_tracks[idx] * detector.TIME_SAMPLING * w
 
                     elif ic < curre.shape[0]:
                         q += curre[ic] * detector.TIME_SAMPLING
-                        for itrk in range(num_backtrack[ip]):
+                        for itrk in range(ntrks):
                             idx = vals_per_tick * ic + offset_backtrack[ip] + itrk
                             current_fractions[ip][iadc][itrk] += pixels_signals_tracks[idx] * detector.TIME_SAMPLING
 
