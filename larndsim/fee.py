@@ -549,7 +549,7 @@ def get_adc_values(pixels_signals,
     """
     ip = cuda.grid(1)
 
-    vals_per_tick = offset_backtrack[-1] # #pix * backtracks
+    vals_per_tick = offset_backtrack[-1] + num_backtrack[0] # #pix * backtracks
 
     ntrks = min(num_backtrack[ip], current_fractions.shape[2])
 
