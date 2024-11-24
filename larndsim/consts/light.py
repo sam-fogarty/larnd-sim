@@ -4,6 +4,9 @@ Sets ligth-related constants
 import yaml
 import numpy as np
 import os
+import numbers
+
+from . import detector
 
 LIGHT_SIMULATED = True
 
@@ -105,18 +108,33 @@ def set_light_properties(detprop_file):
     try:
         LIGHT_SIMULATED = bool(detprop.get('light_simulated', LIGHT_SIMULATED))
 
+        mod_ids = detector.get_n_modules(detprop_file)
+        n_tpc = len(mod_ids)*2
         N_OP_CHANNEL = detprop['n_op_channel']
+        if N_OP_CHANNEL % n_tpc != 0:
+            raise ValueError("N_OP_CHANNEL should be a multiple of n_tpc.")
+        if N_OP_CHANNEL % OP_CHANNEL_PER_TRIG != 0:
+            raise ValueError("N_OP_CHANNEL should be a multiple of number of SiPM per light unit (The default is 6).")
         OP_CHANNEL_EFFICIENCY = np.array(detprop.get('op_channel_efficiency', OP_CHANNEL_EFFICIENCY))
         if OP_CHANNEL_EFFICIENCY.size == 1:
             OP_CHANNEL_EFFICIENCY = np.full(N_OP_CHANNEL, OP_CHANNEL_EFFICIENCY)
 
-        tpc_to_op_channel = detprop['tpc_to_op_channel']
-        OP_CHANNEL_TO_TPC = np.zeros((N_OP_CHANNEL,), int)
-        TPC_TO_OP_CHANNEL = np.zeros((len(tpc_to_op_channel), len(tpc_to_op_channel[0])), int)
-        for itpc in range(len(tpc_to_op_channel)):
-            TPC_TO_OP_CHANNEL[itpc] = np.array(tpc_to_op_channel[itpc])
-            for idet in tpc_to_op_channel[itpc]:
-                OP_CHANNEL_TO_TPC[idet] = itpc
+        try:
+            tpc_to_op_channel = detprop['tpc_to_op_channel']
+            OP_CHANNEL_TO_TPC = np.zeros((N_OP_CHANNEL,), int)
+            TPC_TO_OP_CHANNEL = np.zeros((len(tpc_to_op_channel), len(tpc_to_op_channel[0])), int)
+            for itpc in range(len(tpc_to_op_channel)):
+                TPC_TO_OP_CHANNEL[itpc] = np.array(tpc_to_op_channel[itpc])
+                for idet in tpc_to_op_channel[itpc]:
+                    OP_CHANNEL_TO_TPC[idet] = itpc
+        except:
+            n_op_per_tpc = int(N_OP_CHANNEL/n_tpc)
+            OP_CHANNEL_TO_TPC = np.zeros((N_OP_CHANNEL,), int)
+            TPC_TO_OP_CHANNEL = np.zeros((n_tpc, n_op_per_tpc), int)
+            for itpc in range(n_tpc):
+                TPC_TO_OP_CHANNEL[itpc] = np.arange(itpc*n_op_per_tpc, (itpc+1)*n_op_per_tpc)
+                for idet in TPC_TO_OP_CHANNEL[itpc]:
+                    OP_CHANNEL_TO_TPC[idet] = itpc
 
         ENABLE_LUT_SMEARING = bool(detprop.get('enable_lut_smearing', ENABLE_LUT_SMEARING))
         LIGHT_TICK_SIZE = float(detprop.get('light_tick_size', LIGHT_TICK_SIZE))
@@ -153,10 +171,17 @@ def set_light_properties(detprop_file):
         OP_CHANNEL_PER_TRIG = int(detprop.get('op_channel_per_det', OP_CHANNEL_PER_TRIG))
         LIGHT_TRIG_MODE = int(detprop.get('light_trig_mode', LIGHT_TRIG_MODE))
         assert LIGHT_TRIG_MODE in (0,1)
+        # One threshold for an ArCLight unit or three LCM units (6 SiPMs each)
+        # A single threshold for all channels
         if isinstance(detprop['light_trig_threshold'], (float, int)):
             LIGHT_TRIG_THRESHOLD = np.full(N_OP_CHANNEL // OP_CHANNEL_PER_TRIG, float(detprop['light_trig_threshold']))
+        # Assuming the same threshold is applied for all ACL and another one for all LCM
+        elif isinstance(detprop['light_trig_threshold'], list) and len(detprop['light_trig_threshold']) == 2:
+            LIGHT_TRIG_THRESHOLD = np.tile(np.array(detprop['light_trig_threshold'], dtype=float), N_OP_CHANNEL // OP_CHANNEL_PER_TRIG)
         else:
             LIGHT_TRIG_THRESHOLD = np.array(detprop['light_trig_threshold'], dtype=float)
+            if len(LIGHT_TRIG_THRESHOLD) != (N_OP_CHANNEL // OP_CHANNEL_PER_TRIG):
+                raise ValueError("The light_trig_threshold is provided as a list but with a length not matched with n_op_channel.")
         LIGHT_TRIG_WINDOW = tuple(detprop.get('light_trig_window', LIGHT_TRIG_WINDOW))
         assert len(LIGHT_TRIG_WINDOW) == 2
         LIGHT_DIGIT_SAMPLE_SPACING = float(detprop.get('light_digit_sample_spacing', LIGHT_DIGIT_SAMPLE_SPACING))
