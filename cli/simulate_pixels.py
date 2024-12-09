@@ -103,23 +103,23 @@ def maybe_create_rng_states(n, seed=0, rng_states=None):
 
     return rng_states
 
-def load_mod2mod_variation_properties(cfg, files, id_name, n_modules, message=""):
-    if files is None:
+def load_mod2mod_variation_properties(cfg_files, ids, n_modules, message=""):
+    if cfg_files is None:
         return None
 
-    try:
-        ids = cfg[id_name]
-        if not isinstance(files, list) or len(ids) != n_modules or max(ids) >= len(files):
+    if ids is None:
+        if isinstance(cfg_files, list) and len(cfg_files) != n_modules:
+            raise KeyError(f"Simulation with module variation activated, but the number of {message} is incorrect!")
+        elif isinstance(cfg_files, list) and len(cfg_files) == n_modules:
+            warnings.warn("Simulation with module variation activated, using default orders for the {message}.")
+    else:
+        if not isinstance(cfg_files, list) or len(ids) != n_modules or max(ids) >= len(cfg_files):
             raise KeyError(f"Simulation with module variation activated, but the number of pointer for {message} is incorrect!")
         else:
-            module_files = [files[idx] for idx in ids]
-            files = module_files
-    except:
-        if isinstance(files, list) and len(files) != n_modules:
-            raise KeyError(f"Simulation with module variation activated, but the number of {message} is incorrect!")
-        elif isinstance(files, list) and len(files) == n_modules:
-            warnings.warn("Simulation with module variation activated, using default orders for the {message}.")
-    return files
+            module_files = [cfg_files[idx] for idx in ids]
+            cfg_files = module_files
+
+    return cfg_files
 
 def run_simulation(input_filename,
                    output_filename,
@@ -268,16 +268,30 @@ def run_simulation(input_filename,
 
     # Set the input (meta data) files
     cfg = get_config(config)
+    if mod2mod_variation is None:
+        try:
+            mod2mod_variation = cfg['MOD2MOD_VARIATION']
+        except:
+            print("The configuration has not specify wether to load different configurations for different modules. By default all the modules (if more than one simulated) are loaded with the same configuration.")
+
     if pixel_layout is None:
         pixel_layout = cfg['PIXEL_LAYOUT']
     if pixel_layout_id is None:
-        pixel_layout_id = cfg['PIXEL_LAYOUT_ID']
+        try:
+            pixel_layout_id = cfg['PIXEL_LAYOUT_ID']
+        except:
+            if mod2mod_variation is True:
+                print("Simulation with module variation activated, but pixel_layout_id is not provided.")
     if detector_properties is None:
         detector_properties = cfg['DET_PROPERTIES']
     if response_file is None:
         response_file = cfg['RESPONSE']
     if response_id is None:
-        response_id = cfg['RESPONSE_ID']
+        try:
+            response_id = cfg['RESPONSE_ID']
+        except:
+            if mod2mod_variation is True:
+                print("Simulation with module variation activated, but response_id is not provided.")
     if pixel_thresholds_file is None:
         try:
             pixel_thresholds_file = cfg['PIXEL_THRESHOLDS_FILE']
@@ -314,6 +328,12 @@ def run_simulation(input_filename,
                         warnings.warn("Path to light LUT in the configuration file is not valid. Switching to the default 2x2 module light LUT in larnd-sim now...")
             except:
                 print("light_lut_filename is not provided (required if light_simulated is True)")
+        if light_lut_id is None:
+            try:
+                light_lut_id = cfg['LIGHT_LUT_ID']
+            except:
+                if mod2mod_variation is True:
+                    print("Simulation with module variation activated, but light_lut_id is not provided")
         if light_det_noise_filename is None:
             try:
                 light_det_noise_filename = cfg['LIGHT_DET_NOISE']
@@ -356,12 +376,6 @@ def run_simulation(input_filename,
     mod_ids = consts.detector.get_n_modules(detector_properties)
     n_modules = len(mod_ids)
 
-    if mod2mod_variation is None:
-        try:
-            mod2mod_variation = cfg['MOD2MOD_VARIATION']
-        except:
-            print("The configuration has not specify wether to load different configurations for different modules. By default all the modules (if more than one simulated) are loaded with the same configuration.")
-
     if mod2mod_variation is True:
         if n_modules == 1:
             warnings.warn("Simulating one module with module variation activated! \nDeactivating module variation...")
@@ -372,15 +386,15 @@ def run_simulation(input_filename,
 
     if mod2mod_variation is True:
         # Load the index for pixel layout, response and LUT
-        pixel_layout = load_mod2mod_variation_properties(cfg, pixel_layout, "PIXEL_LAYOUT_ID", n_modules, message="pixel layout")
-        response_file = load_mod2mod_variation_properties(cfg, response_file, "RESPONSE_ID", n_modules, message="response files")
-        pixel_thresholds_file = load_mod2mod_variation_properties(cfg, pixel_thresholds_file, "PIXEL_THRESHOLD_ID", n_modules, message="pixel threshold files")
-        pixel_gains_file = load_mod2mod_variation_properties(cfg, pixel_gains_file, "PIXEL_GAIN_ID", n_modules, message="pixel gain files")
+        pixel_layout = load_mod2mod_variation_properties(pixel_layout, pixel_layout_id, n_modules, message="pixel layout")
+        response_file = load_mod2mod_variation_properties(response_file, response_id, n_modules, message="response files")
+        pixel_thresholds_file = load_mod2mod_variation_properties(pixel_thresholds_file, pixel_thresholds_id, n_modules, message="pixel threshold files")
+        pixel_gains_file = load_mod2mod_variation_properties(pixel_gains_file, pixel_gains_id, n_modules, message="pixel gain files")
         if light_simulated:
-            light_lut_filename = load_mod2mod_variation_properties(cfg, light_lut_filename, "LIGHT_LUT_ID", n_modules, message="light LUT")
+            light_lut_filename = load_mod2mod_variation_properties(light_lut_filename, light_lut_id, n_modules, message="light LUT")
 
-        if cfg['PIXEL_LAYOUT_ID'] and cfg['RESPONSE_ID']:
-            if cfg['PIXEL_LAYOUT_ID'] != cfg['RESPONSE_ID']:
+        if pixel_layout_id and response_id:
+            if pixel_layout_id != response_id:
                 warnings.warn("Simulation with module variation activated, the pixel layout and response files may not be consistent with each other. Please double check!")
 
     logger = memory_logger(save_memory is None)
