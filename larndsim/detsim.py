@@ -500,7 +500,7 @@ def sum_pixel_signals(pixels_signals, signals, track_starts, pixel_index_map, tr
 
     itrk, ipix, itick = cuda.grid(3)
 
-    vals_per_tick = offset_backtrack[-1] + num_backtrack[0] # #pix * backtracks
+    vals_per_tick = offset_backtrack[-1] + num_backtrack[-1] # #pix * backtracks
 
     if itrk < signals.shape[0] and ipix < signals.shape[1]:
 

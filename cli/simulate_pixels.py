@@ -1067,7 +1067,7 @@ def run_simulation(input_filename,
                 # note track_pixel_map has shape (#unique pix, max tracks per pixel)
                 # num_backtrack has shape of (#unique pix,)
                 num_backtrack = cp.sum(track_pixel_map != -1, axis=-1)
-                offset_backtrack = cp.cumsum(num_backtrack) - num_backtrack[0]
+                offset_backtrack = cp.cumsum(num_backtrack) - num_backtrack
                 # pixels_tracks_signals is a jagged array of dimension (#unique_pix, #ticks, backtracked_segments)
                 # where the segments are jagged
                 pixels_tracks_signals = cp.zeros(len(detector.TIME_TICKS) * int(num_backtrack.sum()))
