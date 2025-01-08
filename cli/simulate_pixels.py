@@ -1064,13 +1064,21 @@ def run_simulation(input_filename,
                 BPG_Z = max(ceil(signals.shape[2] / TPB[2]),1)
                 BPG = (BPG_X, BPG_Y, BPG_Z)
                 pixels_signals = cp.zeros((len(unique_pix), len(detector.TIME_TICKS)))
-                # note track_pixel_map has shape (#unique pix, max tracks per pixel)
-                # num_backtrack has shape of (#unique pix,)
+                # Note, track_pixel_map has shape (#unique pix, max tracks per pixel)
+                # num_backtrack[ipix] is the number of segments contributing to the pixel
                 num_backtrack = cp.sum(track_pixel_map != -1, axis=-1)
-                offset_backtrack = cp.cumsum(num_backtrack) - num_backtrack
-                # pixels_tracks_signals is a jagged array of dimension (#unique_pix, #ticks, backtracked_segments)
-                # where the segments are jagged
+                # pixels_tracks_signals is a jagged array of conceptual dimension
+                # (#unique_pix, #ticks, backtracked_segments)
+                # where the final axis (over segments) is jagged.
+                # Physically it's represented as a 1D array where the time index
+                # increments the slowest, followed by the pixel index, followed
+                # by the segment index (whose size depends on the pixel). See sum_pixel_signals.
                 pixels_tracks_signals = cp.zeros(len(detector.TIME_TICKS) * int(num_backtrack.sum()))
+                # offset_backtrack[ipix] is the total number of pixel<->segment
+                # pairs summed over pixels [0, 1, ..., ipix-1]. The kernel uses
+                # it to jump to the pixel's storage in pixels_tracks_signals.
+                # E.g.: num_backtrack = [2, 4, 3] => offset_backtrack = [0, 2, 6]
+                offset_backtrack = cp.cumsum(num_backtrack) - num_backtrack
                 overflow_flag = cp.zeros(len(unique_pix))
                 detsim.sum_pixel_signals[BPG,TPB](pixels_signals,
                                                   signals,

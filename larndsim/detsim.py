@@ -500,7 +500,8 @@ def sum_pixel_signals(pixels_signals, signals, track_starts, pixel_index_map, tr
 
     itrk, ipix, itick = cuda.grid(3)
 
-    vals_per_tick = offset_backtrack[-1] + num_backtrack[-1] # #pix * backtracks
+    # equivalent to num_backtrack.sum()
+    total_backtracks = offset_backtrack[-1] + num_backtrack[-1]
 
     if itrk < signals.shape[0] and ipix < signals.shape[1]:
 
@@ -508,7 +509,7 @@ def sum_pixel_signals(pixels_signals, signals, track_starts, pixel_index_map, tr
         start_tick = round(track_starts[itrk] / detector.TIME_SAMPLING)
         # index into the jagged pixels_tracks_signals array for this pixel and tick
         itime = start_tick + itick
-        base_idx = vals_per_tick * itime + offset_backtrack[pixel_index]
+        base_idx = total_backtracks * itime + offset_backtrack[pixel_index]
 
         if pixel_index >= 0:
             counter = -99
