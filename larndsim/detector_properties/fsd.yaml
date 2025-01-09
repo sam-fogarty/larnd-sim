@@ -24,7 +24,7 @@ v_cm: 478 # mV
 v_ref: 1568 # mV
 
 ## Light geometry parameters
-n_op_channel: 8400
+n_op_channel: 240
 
 ## Light simulation parameters.
 light_trig_mode: 1
