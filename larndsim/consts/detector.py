@@ -91,7 +91,7 @@ TPC_TO_MODULE = {}
 # LArPix FEE
 ###################
 #: Discrimination threshold in e-
-DISCRIMINATION_THRESHOLD = 7e3 # e-
+DISCRIMINATION_THRESHOLD = 5e3 # e-
 #: ADC hold delay in clock cycles
 ADC_HOLD_DELAY = 15
 #: ADC busy delay in clock cycles
@@ -116,9 +116,9 @@ GAIN = 4 / 1e3 # mV/e
 #: Buffer risetime in :math:`\mu s` (set >0 to include buffer response simulation)
 BUFFER_RISETIME = 0.100
 #: Common-mode voltage in :math:`mV`
-V_CM = 288 # mV
+V_CM = 478.1 # mV
 #: Reference voltage in :math:`mV`
-V_REF = 1300 # mV
+V_REF = 1568 # mV
 #: Pedestal voltage in :math:`mV`
 V_PEDESTAL = 580 # mV
 #: Number of ADC counts
