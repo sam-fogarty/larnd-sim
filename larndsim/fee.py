@@ -531,21 +531,30 @@ def get_adc_values(pixels_signals,
 
     Args:
         pixels_signals (:obj:`numpy.ndarray`): list of induced currents for
-            each pixel
+            each pixel. Shape (n_unique_pix, n_ticks).
         pixels_signals_tracks (:obj:`numpy.ndarray`): list of induced currents
-            for each track that induces current on each pixel
-        time_ticks (:obj:`numpy.ndarray`): list of time ticks for each pixel
-        adc_list (:obj:`numpy.ndarray`): list of integrated charges for each
-            pixel
-        adc_ticks_list (:obj:`numpy.ndarray`): list of the time ticks that
-            correspond to each integrated charge
+            for each track that induces current on each pixel.
+            Jagged; "shape" (n_unique_pix, n_ticks, num_backtrack[ipix]).
+        num_backtrack (:obj:`numpy.ndarray`): For a given pixel, the number of
+            backtracked track segments. Shape (n_unique_pix,).
+        offset_backtrack (:obj:`numpy.ndarray`): For a given pixel, the offset
+            into `pixels_signals_tracks` for that pixel's data.
+            Shape (n_unique_pix,).
+        time_ticks (:obj:`numpy.ndarray`): list of time ticks for each pixel.
+            Shape (n_ticks+1,).
+        adc_list (:obj:`numpy.ndarray`): Output; list of integrated charges for each
+            pixel. Shape (n_unique_pix, max_adc_vals).
+        adc_ticks_list (:obj:`numpy.ndarray`): Output; list of the time ticks that
+            correspond to each integrated charge. Shape (n_unique_pix, max_adc_vals).
         time_padding (float): time interval to add to each time tick.
         rng_states (:obj:`numpy.ndarray`): array of random states for noise
-            generation
-        current_fractions (:obj:`numpy.ndarray`): 2D array that will contain
-            the fraction of current induced on the pixel by each track
+            generation. Shape (TPB*BPG,).
+        current_fractions (:obj:`numpy.ndarray`): Output; 2D array that will contain
+            the fraction of current induced on the pixel by each track.
+            Shape (n_unique_pix, max_adc_vals, MAX_TRACKS_PER_PIXEL).
+            TODO: Jaggedize.
         pixel_thresholds(: obj: `numpy.ndarray`): list of discriminator
-            thresholds for each pixel
+            thresholds for each pixel. Shape (n_unique_pix,)
     """
     ip = cuda.grid(1)
 
