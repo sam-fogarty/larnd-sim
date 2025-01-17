@@ -70,8 +70,7 @@ module0:
     SIM_PROPERTIES:  singles_sim.yaml
 
 # nd-lar (same module configuration)
-# lack of light configuration files
-ndlar: 
+ndlar: &ndlarmain
     SIM_PROPERTIES:  NDLAr_LBNF_sim.yaml
     PIXEL_LAYOUT:    [multi_tile_layout-3.0.40.yaml]
     PIXEL_LAYOUT_ID: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -82,8 +81,12 @@ ndlar:
     LIGHT_LUT:       [/global/cfs/cdirs/dune/www/data/2x2/simulation/larndsim_data/light_LUT/lightLUT_FSD_250123_time_norm.npz]
     LIGHT_LUT_ID:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     LIGHT_DET_NOISE: 4Mod_LNoise_Mod1_2fftx192_MR5-ish.npy
-    LIGHT_SIMULATED: True
+    LIGHT_SIMULATED: False
     MOD2MOD_VARIATION: True
+
+ndlar_light:
+    <<: *ndlarmain
+    LIGHT_SIMULATED: True
 
 fsd:
     SIM_PROPERTIES:  singles_sim.yaml
