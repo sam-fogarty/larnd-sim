@@ -509,8 +509,8 @@ def digitize(integral_list, gain=detector.GAIN * mV / e):
         :obj:`numpy.ndarray`: list of ADC values for each pixel
     """
     xp = cp.get_array_module(integral_list)
-    adcs = xp.minimum(xp.around(xp.maximum((integral_list * gain + detector.V_PEDESTAL * mV - detector.V_CM * mV), 0)
-                                * detector.ADC_COUNTS / (detector.V_REF * mV - detector.V_CM * mV)), detector.ADC_COUNTS-1)
+    adcs = xp.floor(xp.minimum(xp.maximum((integral_list * gain + detector.V_PEDESTAL * mV - detector.V_CM * mV), 0)
+                                * detector.ADC_COUNTS / (detector.V_REF * mV - detector.V_CM * mV), detector.ADC_COUNTS-1))
 
     return adcs
 
