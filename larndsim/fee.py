@@ -98,24 +98,36 @@ def export_to_hdf5(event_id_list,
     """
     Saves the ADC counts in the LArPix HDF5 format.
     Args:
-        event_id_list (:obj:`numpy.ndarray`): list of event ids for each ADC value for each pixel
-        adc_list (:obj:`numpy.ndarray`): list of ADC values for each pixel
-        adc_ticks_list (:obj:`numpy.ndarray`): list of time ticks for each pixel
-        unique_pix (:obj:`numpy.ndarray`): list of pixel IDs
-        current_fractions (:obj:`numpy.ndarray`): array containing the fractional current
-            induced by each track on each pixel
-        track_ids (:obj:`numpy.ndarray`): 2D array containing the track IDs associated
-            to each pixel
+        event_id_list (:obj:`numpy.ndarray`): event ids for each tick;
+                shape (nticks, max_adcs); dtype uint32
+        adc_list (:obj:`numpy.ndarray`): ADC values for each tick;
+                shape (nticks, max_adcs); dtype float64
+        adc_ticks_list (:obj:`numpy.ndarray`): timestamps for each tick;
+                shape (nticks, max_adcs); dtype float64
+        unique_pix (:obj:`numpy.ndarray`): pixel IDs for each tick;
+                shape (nticks,); dtype int32
+        current_fractions (:obj:`numpy.ndarray`): fractional current induced by
+            each track on each pixel;
+                shape (nticks, max_adcs, max_backtracks); dtype float64
+        track_ids (:obj:`numpy.ndarray`): track IDs associated to each pixel;
+                shape (nticks, max_backtracks); dtype int64
         filename (str): filename of HDF5 output file
-        event_times (:obj:`numpy.ndarray`): list of timestamps for start each unique event [in microseconds]
-        light_trigger_times (array): 1D array of light trigger timestamps (relative to event t0) [in microseconds]
-        light_trigger_event_id (array): 1D array of event id for each light trigger
-        light_trigger_modules (array): 1D array of module id for each light trigger
-        bad_channels (dict): dictionary containing as value a list of bad channels and as
-            the chip key
-        i_mod (int): module index for saving the result in each module individually if needed.
+        event_start_times (:obj:`numpy.ndarray`): timestamps of start of each
+            unique event [in microseconds];
+                shape (nevents,); dtype float64
+        light_trigger_times (:obj:`numpy.ndarray`): light trigger timestamps
+            (relative to event t0) [in microseconds];
+                shape (ntrigs,); dtype float64
+        light_trigger_event_id (:obj:`numpy.ndarray`): event id for each light trigger;
+                shape (ntrigs,); dtype uint32
+        light_trigger_modules (:obj:`numpy.ndarray`): module id for each light trigger;
+                shape (ntrigs,); dtype int64
+        bad_channels (dict): dictionary mapping a chip key to a list of bad channels
+        i_mod (int): module index for saving the result in each module
+            individually if needed.
     Returns:
-        tuple: a tuple containing the list of LArPix packets and the list of entries for the `mc_packets_assn` dataset
+        tuple: a tuple containing the list of LArPix packets and the list of
+            entries for the `mc_packets_assn` dataset
     """
 
     io_groups = np.unique(np.array(list(detector.MODULE_TO_IO_GROUPS.values())))
