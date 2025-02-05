@@ -1280,7 +1280,7 @@ def run_simulation(input_filename,
     # once mod2mod variation is enabled, the light threshold triggering does not work properly
     # compare the light trigger between different module and digitize afterwards should solve the issue
     if light.LIGHT_TRIG_MODE == 1 and light.LIGHT_SIMULATED:
-        light_event_id = np.unique(localSpillIDs) if sim.IS_SPILL_SIM else vertices['event_id']
+        light_event_id = np.unique(localSpillIDs) if sim.IS_SPILL_SIM else np.unique(all_mod_tracks['event_id'])
         light_start_times = np.full(len(light_event_id), 0) # if it is beam trigger it is set to 0
         light_trigger_idx = np.full(len(light_event_id), 0) # one beam spill, one trigger
         light_op_channel_idx = light.TPC_TO_OP_CHANNEL[:].ravel()
