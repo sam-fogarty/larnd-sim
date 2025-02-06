@@ -84,7 +84,7 @@ ndlar:
     #LIGHT_DET_NOISE: ''
 
 fsd:
-    SIM_PROPERTIES:  NDLAr_LBNF_sim.yaml
+    SIM_PROPERTIES:  singles_sim.yaml
     PIXEL_LAYOUT:    multi_tile_layout-3.0.40_fsd_v2.yaml
     DET_PROPERTIES:  ndlar-module.yaml
     RESPONSE:        response_37_v2d_50ns_fsd.npy
