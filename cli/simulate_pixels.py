@@ -901,6 +901,7 @@ def run_simulation(input_filename,
             # this relies on that batching is done in the order of events
             if ievd > event_id_buffer:
                 is_new_event = True
+                event_id_buffer = ievd
             else:
                 is_new_event = False
             this_event_time = [event_times[ievd % sim.MAX_EVENTS_PER_FILE]]
