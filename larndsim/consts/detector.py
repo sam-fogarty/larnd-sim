@@ -299,7 +299,10 @@ def set_detector_properties(detprop_file, pixel_file, i_module=-1, geo_only=Fals
 
     # if module variation for pixel layout file exist, "pixel_file" is a list of pixel layout file with the length of module number
     if isinstance(pixel_file, list):
-        pixel_file = pixel_file[i_module-1]
+        if i_module < 0:
+            pixel_file = pixel_file[0]
+        else:
+            pixel_file = pixel_file[i_module-1]
     with open(pixel_file, 'r') as pf:
         tile_layout = yaml.load(pf, Loader=yaml.FullLoader)
 
